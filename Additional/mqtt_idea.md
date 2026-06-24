@@ -39,7 +39,7 @@ MQTT (Message Queuing Telemetry Transport) – это легковесный п�
 Для написания клиента нам пригодиться библиотека paho-c, разработанную для реализации клиентской части протокола MQTT. Для установки на клиенте необходимо выполнить на одноплатнике:
 
 ```
-# apt-get install libpaho-mqtt1 libpaho-mqtt-devel
+# apt-get install libmosquitto libmosquitto-devel
 ```
 
 Для написания брокера, выполняющего одновременно функцию подписчика будем использовать питоновскую реализацию paho.

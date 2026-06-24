@@ -1,0 +1,78 @@
+% Преамбула pandoc: подключается через --include-in-header
+% Язык (russian) и кодировка (UTF-8) задаются в YAML-метаданных — pandoc сам подключает babel
+% Не дублируем fontenc/inputenc/babel — они конфликтуют с шаблоном pandoc
+
+% Абзацный отступ
+\usepackage{indentfirst}
+\setlength{\parindent}{1.25cm}
+
+% Поля (ГОСТ для методических пособий)
+\usepackage{geometry}
+\geometry{top=2cm, bottom=2cm, left=3cm, right=1.5cm}
+
+% Межстрочный интервал (полуторный)
+\usepackage{setspace}
+\onehalfspacing
+
+% Sans-serif шрифт для заголовков (scrreprt использует \sffamily по умолчанию)
+\setsansfont{DejaVu Sans}
+
+% Оформление кода через listings (не требует pygmentize и -shell-escape)
+\usepackage{xcolor}
+\definecolor{codebg}{gray}{0.95}
+\usepackage{listings}
+\lstset{
+  basicstyle=\footnotesize\ttfamily,
+  breaklines=true,
+  frame=single,
+  framesep=6pt,
+  backgroundcolor=\color{codebg},
+  tabsize=2,
+  showstringspaces=false,
+  literate={«}{{\guillemotleft}}1 {»}{{\guillemotright}}1
+}
+
+% Подписи к таблицам и рисункам
+\usepackage{caption}
+\captionsetup[table]{
+  labelsep=endash,
+  justification=raggedright,
+  singlelinecheck=false,
+  skip=0pt
+}
+\captionsetup[figure]{
+  labelsep=endash,
+  justification=centering
+}
+
+% Графика
+\usepackage{graphicx}
+\graphicspath{{./pictures/}}
+
+% Гиперссылки
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue,
+  citecolor=black
+}
+
+% Поддержка кириллицы в закладках PDF
+\usepackage{bookmark}
+
+% Таблицы
+\usepackage{booktabs}
+\usepackage{longtable}
+
+% Настройка оглавления: меньший шрифт, минимальный отступ сверху
+\usepackage{tocloft}
+\setlength{\cftbeforetoctitleskip}{0em}
+\setlength{\cftaftertoctitleskip}{1em}
+\renewcommand{\cfttoctitlefont}{\normalfont\large\bfseries}
+\renewcommand{\cftchapfont}{\small}
+\renewcommand{\cftsecfont}{\footnotesize}
+\renewcommand{\cftchappagefont}{\small}
+\renewcommand{\cftsecpagefont}{\footnotesize}
+\setlength{\cftbeforechapskip}{3pt}
+\setlength{\cftbeforesecskip}{1pt}
