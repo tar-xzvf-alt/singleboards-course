@@ -152,10 +152,6 @@ h1, h2, h3, h4 {
 
 <div style="page-break-after: always;"></div>
 
-@import "lab11.md"
-
-<div style="page-break-after: always;"></div>
-
 @import "lab12.md"
 
 <div style="page-break-after: always;"></div>

@@ -17,15 +17,18 @@
 % Sans-serif шрифт для заголовков (scrreprt использует \sffamily по умолчанию)
 \setsansfont{DejaVu Sans}
 
-% Оформление кода через listings (не требует pygmentize и -shell-escape)
+% Оформление кода через listings
 \usepackage{xcolor}
 \definecolor{codebg}{gray}{0.95}
+\definecolor{codeframe}{gray}{0.5}
 \usepackage{listings}
 \lstset{
   basicstyle=\footnotesize\ttfamily,
   breaklines=true,
-  frame=single,
-  framesep=6pt,
+  frame=leftline,
+  framerule=3pt,
+  rulecolor=\color{codeframe},
+  framesep=8pt,
   backgroundcolor=\color{codebg},
   tabsize=2,
   showstringspaces=false,

@@ -23,13 +23,13 @@ done
 echo "1. Склеивание лабораторных работ..."
 cat >"$TMP_MD" <<'YAML'
 ---
-title: "Одноплатные компьютеры на базе RISC-V (Allwinner D1)"
+title: "Linux на встраиваемых устройствах"
 subtitle: "Лабораторный практикум"
 author: "Лаборатория «СГУ — Базальт СПО»"
 date: "2026"
 lang: ru-RU
 toc: true
-toc-depth: 2
+toc-depth: 1
 documentclass: scrreprt
 papersize: a4
 fontsize: 12pt
@@ -39,7 +39,7 @@ monofont: "DejaVu Sans Mono"
 
 YAML
 
-for i in $(seq 1 13); do
+for i in 1 2 3 4 5 6 7 8 9 10 12 13; do
     LAB_FILE="${REPO_ROOT}/labs/lab${i}.md"
     if [ ! -f "$LAB_FILE" ]; then
         echo "ОШИБКА: не найден $LAB_FILE" >&2
@@ -47,7 +47,7 @@ for i in $(seq 1 13); do
     fi
     echo "   + lab${i}.md"
     cat "$LAB_FILE" >>"$TMP_MD"
-    echo -e "\n\\newpage\n" >>"$TMP_MD"
+    echo "" >>"$TMP_MD"
 done
 
 # Сборка PDF через pandoc + xelatex
