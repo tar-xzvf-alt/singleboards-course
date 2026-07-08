@@ -10,14 +10,14 @@ end
 function CodeBlock(block)
   local lang = block.classes[1] or ""
   local text = block.text
-  
+
   if is_bash(lang) then
-    local style = "language=bash,backgroundcolor=\\color{bashbg},frame=leftline,framerule=3pt,rulecolor=\\color{bashframe}"
+    local style = "fontsize=\\footnotesize,breaklines=true,breakanywhere=true,tabsize=2,frame=leftline,framerule=3pt,framesep=8pt,rulecolor=\\color{bashframe},fillcolor=\\color{bashbg}"
     return pandoc.RawBlock("latex",
-      "\\begin{lstlisting}[" .. style .. "]\n" .. text .. "\n\\end{lstlisting}")
+      "\\begin{Verbatim}[" .. style .. "]\n" .. text .. "\n\\end{Verbatim}")
   else
-    local style = "backgroundcolor=\\color{codebg},frame=leftline,framerule=3pt,rulecolor=\\color{codeframe}"
+    local style = "fontsize=\\footnotesize,breaklines=true,breakanywhere=true,tabsize=2,frame=leftline,framerule=3pt,framesep=8pt,rulecolor=\\color{codeframe},fillcolor=\\color{codebg}"
     return pandoc.RawBlock("latex",
-      "\\begin{lstlisting}[" .. style .. "]\n" .. text .. "\n\\end{lstlisting}")
+      "\\begin{Verbatim}[" .. style .. "]\n" .. text .. "\n\\end{Verbatim}")
   end
 end

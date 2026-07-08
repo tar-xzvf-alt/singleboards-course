@@ -4,7 +4,8 @@
 
 % Абзацный отступ
 \usepackage{indentfirst}
-\setlength{\parindent}{1.25cm}
+\setlength{\parindent}{0.75cm}
+\setlength{\parskip}{0pt plus 1pt}
 
 % Поля (ГОСТ для методических пособий)
 \usepackage{geometry}
@@ -14,23 +15,23 @@
 \usepackage{setspace}
 \onehalfspacing
 
+% Компактные заголовки и абзацы. scrreprt по умолчанию оставляет слишком много воздуха.
+\KOMAoptions{parskip=false}
+\RedeclareSectionCommand[beforeskip=-1.0\baselineskip,afterskip=0.45\baselineskip]{chapter}
+\RedeclareSectionCommand[beforeskip=-0.7\baselineskip,afterskip=0.25\baselineskip]{section}
+\RedeclareSectionCommand[beforeskip=-0.5\baselineskip,afterskip=0.15\baselineskip]{subsection}
+\RedeclareSectionCommand[beforeskip=-0.4\baselineskip,afterskip=0.10\baselineskip]{subsubsection}
+
 % Sans-serif шрифт для заголовков (scrreprt использует \sffamily по умолчанию)
 \setsansfont{DejaVu Sans}
 
-% Оформление кода через listings
+% Оформление кода: fvextra корректно сохраняет UTF-8/кириллицу в отличие от listings.
 \usepackage{xcolor}
 \definecolor{codebg}{gray}{0.94}
 \definecolor{codeframe}{gray}{0.5}
 \definecolor{bashbg}{RGB}{235,240,248}
 \definecolor{bashframe}{RGB}{80,120,180}
-\usepackage{listings}
-\lstset{
-  basicstyle=\footnotesize\ttfamily,
-  breaklines=true,
-  tabsize=2,
-  showstringspaces=false,
-  literate={«}{{\guillemotleft}}1 {»}{{\guillemotright}}1
-}
+\usepackage{fvextra}
 
 % Подписи к таблицам и рисункам
 \usepackage{caption}
@@ -42,12 +43,23 @@
 }
 \captionsetup[figure]{
   labelsep=endash,
-  justification=centering
+  justification=centering,
+  skip=3pt
 }
 
 % Графика
 \usepackage{graphicx}
+\usepackage{float}
 \graphicspath{{./pictures/}}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>0.48\textheight 0.48\textheight\else\Gin@nat@height\fi}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\def\fps@figure{H}
+\makeatother
+\setlength{\textfloatsep}{6pt plus 2pt minus 2pt}
+\setlength{\floatsep}{6pt plus 2pt minus 2pt}
+\setlength{\intextsep}{6pt plus 2pt minus 2pt}
 
 % Гиперссылки
 \usepackage{hyperref}
@@ -76,3 +88,4 @@
 \renewcommand{\cftsecpagefont}{\footnotesize}
 \setlength{\cftbeforechapskip}{3pt}
 \setlength{\cftbeforesecskip}{1pt}
+\AtBeginDocument{\setcounter{tocdepth}{0}}

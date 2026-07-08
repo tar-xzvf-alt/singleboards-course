@@ -35,7 +35,7 @@ author: "Лаборатория «СГУ — Базальт СПО»"
 date: "2026"
 lang: ru-RU
 toc: true
-toc-depth: 1
+toc-depth: 0
 documentclass: scrreprt
 papersize: a4
 fontsize: 12pt
