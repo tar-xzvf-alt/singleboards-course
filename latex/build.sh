@@ -68,6 +68,7 @@ pandoc "_build_temp.md" \
     -o "labs_pdf/metodichka.pdf" \
     --pdf-engine=xelatex \
     --include-in-header="latex/header.tex" \
+    --lua-filter="latex/style-code.lua" \
     --toc \
     --number-sections \
     --standalone \

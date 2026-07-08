@@ -19,17 +19,14 @@
 
 % Оформление кода через listings
 \usepackage{xcolor}
-\definecolor{codebg}{gray}{0.95}
+\definecolor{codebg}{gray}{0.94}
 \definecolor{codeframe}{gray}{0.5}
+\definecolor{bashbg}{RGB}{235,240,248}
+\definecolor{bashframe}{RGB}{80,120,180}
 \usepackage{listings}
 \lstset{
   basicstyle=\footnotesize\ttfamily,
   breaklines=true,
-  frame=leftline,
-  framerule=3pt,
-  rulecolor=\color{codeframe},
-  framesep=8pt,
-  backgroundcolor=\color{codebg},
   tabsize=2,
   showstringspaces=false,
   literate={«}{{\guillemotleft}}1 {»}{{\guillemotright}}1
