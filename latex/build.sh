@@ -7,6 +7,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 OUTPUT="${REPO_ROOT}/labs_pdf/metodichka.pdf"
 TMP_MD="/tmp/rv_course_all_labs.md"
+BUILD_TEMP="${REPO_ROOT}/_build_temp.md"
+
+cleanup() {
+    rm -f "$BUILD_TEMP" "$TMP_MD"
+}
+trap cleanup EXIT
 
 echo "=== Сборка методического пособия ==="
 
@@ -18,8 +24,8 @@ for cmd in pandoc xelatex; do
     fi
 done
 
-# Склеиваем все лабораторные (lab1-lab13) в один файл
-# с YAML-заголовком для pandoc
+# Склеиваем лабораторные из labs/metodichka.md в один файл
+# с YAML-заголовком для pandoc. Файл labs/metodichka.md является источником порядка лабораторных.
 echo "1. Склеивание лабораторных работ..."
 cat >"$TMP_MD" <<'YAML'
 ---
@@ -39,16 +45,21 @@ monofont: "DejaVu Sans Mono"
 
 YAML
 
-for i in 1 2 3 4 5 6 7 8 9 10 12 13; do
-    LAB_FILE="${REPO_ROOT}/labs/lab${i}.md"
+while IFS= read -r line; do
+    if [[ ! "$line" =~ @import[[:space:]]+\"(lab[0-9]+\.md)\" ]]; then
+        continue
+    fi
+
+    LAB_NAME="${BASH_REMATCH[1]}"
+    LAB_FILE="${REPO_ROOT}/labs/${LAB_NAME}"
     if [ ! -f "$LAB_FILE" ]; then
         echo "ОШИБКА: не найден $LAB_FILE" >&2
         exit 1
     fi
-    echo "   + lab${i}.md"
+    echo "   + ${LAB_NAME}"
     cat "$LAB_FILE" >>"$TMP_MD"
     echo "" >>"$TMP_MD"
-done
+done < "${REPO_ROOT}/labs/metodichka.md"
 
 # Сборка PDF через pandoc + xelatex
 echo "2. Генерация PDF (pandoc → xelatex)..."
@@ -58,10 +69,10 @@ mkdir -p "$(dirname "$OUTPUT")"
 # При сборке из каталога labs/ путь должен быть корректным.
 # Запускаем pandoc из REPO_ROOT, а склеенный .md лежит в /tmp — пути ../pictures/ не сработают.
 # Решение: скопировать склеенный .md в REPO_ROOT, собрать оттуда, потом удалить.
-cp "$TMP_MD" "${REPO_ROOT}/_build_temp.md"
+cp "$TMP_MD" "$BUILD_TEMP"
 
 # Исправляем пути к картинкам: ../pictures/ → pictures/ (т.к. pandoc запускается из корня репозитория)
-sed -i 's|\.\./pictures/|pictures/|g' "${REPO_ROOT}/_build_temp.md"
+sed -i 's|\.\./pictures/|pictures/|g' "$BUILD_TEMP"
 
 cd "$REPO_ROOT"
 pandoc "_build_temp.md" \
@@ -73,7 +84,5 @@ pandoc "_build_temp.md" \
     --number-sections \
     --standalone \
     --metadata date="$(date '+%d.%m.%Y')"
-
-rm -f "_build_temp.md" "$TMP_MD"
 
 echo "=== Готово: ${OUTPUT} ==="

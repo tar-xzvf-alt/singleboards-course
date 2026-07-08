@@ -330,6 +330,8 @@
 
 10. **Какие библиотеки для работы с MQTT существуют для различных платформ?**
 
+    **Ответ:** Для Python широко используется Eclipse Paho (`paho-mqtt`), для C/C++ — `libmosquitto` и Paho C/C++, для JavaScript/Node.js — MQTT.js, для Java — Eclipse Paho Java, для Go — Eclipse Paho Go или gmqtt, для микроконтроллеров Arduino/ESP — PubSubClient и AsyncMqttClient. Выбор зависит от платформы, доступной памяти и требований к TLS/QoS.
+
 ## Лабораторная №13 — Итоговое проектное задание по вариантам
 
 1. **Какую роль в итоговом проекте играет MQTT-брокер Mosquitto и почему он выбран в качестве транспортного протокола?**

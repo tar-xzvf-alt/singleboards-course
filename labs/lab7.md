@@ -175,7 +175,7 @@ spi1: spi@4026000 {
 import spidev
 import time
 
-def spi_sequential_test(bus=0, device=0, speed=1000000):
+def spi_sequential_test(bus=1, device=0, speed=1000000):
     
         spi = spidev.SpiDev()
         spi.open(bus, device)
@@ -204,7 +204,7 @@ def spi_sequential_test(bus=0, device=0, speed=1000000):
 # Запуск теста
 if __name__ == "__main__":
     # Настройте под вашу плату
-    spi_sequential_test(bus=0, device=0, speed=1000000)
+    spi_sequential_test(bus=1, device=0, speed=1000000)
 
 
 ```

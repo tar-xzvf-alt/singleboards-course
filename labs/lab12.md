@@ -176,6 +176,8 @@ listener 1883 0.0.0.0
 allow_anonymous true
 ```
 
+Параметр `allow_anonymous true` используется только для локального учебного стенда. В реальной сети необходимо включить аутентификацию, ограничить доступ firewall-правилами и по возможности использовать TLS.
+
 Перезапустите брокер:
 
 ```bash
@@ -542,9 +544,6 @@ $ ./mqtt_c_publisher
 
 ## Полезные ссылки
 
-- [Пример Python-издателя](../examples/mqtt/mqtt_publisher.py) — публикация CPU/RAM в `lichee/stats` раз в 2 секунды
-- [Пример Python-подписчика](../examples/mqtt/mqtt_subscriber.py) — подключение к брокеру, приём данных из `lichee/stats`
-- [Пример C-издателя (libmosquitto)](../examples/mqtt/mqtt_c_publisher.c) — аналог на языке C с использованием libmosquitto
 - [Официальный сайт MQTT](https://mqtt.org/)
 - [Документация Mosquitto](https://mosquitto.org/documentation/)
 - [Eclipse Paho Python](https://github.com/eclipse/paho.mqtt.python)
