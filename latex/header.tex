@@ -33,6 +33,50 @@
 \definecolor{bashframe}{RGB}{80,120,180}
 \usepackage{fvextra}
 
+% Выделенные блоки: предупреждения и дополнительная информация
+\usepackage[most]{tcolorbox}
+\definecolor{attentionbg}{RGB}{255,250,225}
+\definecolor{attentionframe}{RGB}{214,158,0}
+\definecolor{additionalbg}{RGB}{238,248,238}
+\definecolor{additionalframe}{RGB}{92,145,92}
+\newcommand{\attentionicon}{{\color{attentionframe}\sffamily\bfseries ⚠}}
+\newtcolorbox{attentionbox}{
+  enhanced,
+  breakable,
+  colback=attentionbg,
+  colframe=attentionframe,
+  colbacktitle=attentionbg,
+  coltitle=black,
+  boxrule=0.7pt,
+  arc=2pt,
+  left=8pt,
+  right=8pt,
+  top=5pt,
+  bottom=6pt,
+  before skip=7pt,
+  after skip=7pt,
+  title={\attentionicon\quad Внимание},
+  fonttitle=\bfseries\sffamily
+}
+\newtcolorbox{additionalbox}{
+  enhanced,
+  breakable,
+  colback=additionalbg,
+  colframe=additionalframe,
+  colbacktitle=additionalbg,
+  coltitle=black,
+  boxrule=0.6pt,
+  arc=2pt,
+  left=8pt,
+  right=8pt,
+  top=5pt,
+  bottom=6pt,
+  before skip=7pt,
+  after skip=7pt,
+  title={Дополнительная информация},
+  fonttitle=\bfseries\sffamily
+}
+
 % Подписи к таблицам и рисункам
 \usepackage{caption}
 \captionsetup[table]{

@@ -21,3 +21,36 @@ function CodeBlock(block)
       "\\begin{Verbatim}[" .. style .. "]\n" .. text .. "\n\\end{Verbatim}")
   end
 end
+
+local function has_class(div, class)
+  for _, value in ipairs(div.classes) do
+    if value == class then
+      return true
+    end
+  end
+  return false
+end
+
+local function wrap_div(div, environment)
+  local blocks = {
+    pandoc.RawBlock("latex", "\\begin{" .. environment .. "}")
+  }
+  for _, block in ipairs(div.content) do
+    table.insert(blocks, block)
+  end
+  table.insert(blocks,
+    pandoc.RawBlock("latex", "\\end{" .. environment .. "}"))
+  return blocks
+end
+
+function Div(div)
+  if not FORMAT:match("latex") then
+    return nil
+  end
+  if has_class(div, "attention") then
+    return wrap_div(div, "attentionbox")
+  end
+  if has_class(div, "additional") then
+    return wrap_div(div, "additionalbox")
+  end
+end
