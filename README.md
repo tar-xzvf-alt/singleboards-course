@@ -63,3 +63,4 @@ $ ./latex/build.sh
 - [Разработка и отладка приложений для RISC-V](Additional/remote_development.md)
 - [Материалы employer day](Additional/employer_day.md)
 - [Идея MQTT-проекта](Additional/mqtt_idea.md)
+- [Идеи по развитию заданий и итоговых проектов](course_ideas/README.md)
