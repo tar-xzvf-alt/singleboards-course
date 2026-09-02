@@ -33,12 +33,56 @@
 \definecolor{bashframe}{RGB}{80,120,180}
 \usepackage{fvextra}
 
-% Выделенные блоки: предупреждения и дополнительная информация
+% Выделенные блоки: GFM alerts и старые Pandoc-блоки.
 \usepackage[most]{tcolorbox}
+\definecolor{notebg}{RGB}{238,246,255}
+\definecolor{noteframe}{RGB}{55,115,185}
+\definecolor{tipbg}{RGB}{238,249,241}
+\definecolor{tipframe}{RGB}{55,135,75}
+\definecolor{warningbg}{RGB}{255,249,225}
+\definecolor{warningframe}{RGB}{194,135,0}
+\definecolor{cautionbg}{RGB}{255,238,238}
+\definecolor{cautionframe}{RGB}{190,55,55}
 \definecolor{attentionbg}{RGB}{255,250,225}
 \definecolor{attentionframe}{RGB}{214,158,0}
 \definecolor{additionalbg}{RGB}{238,248,238}
 \definecolor{additionalframe}{RGB}{92,145,92}
+\newtcolorbox{notebox}{
+  enhanced, breakable,
+  colback=notebg, colframe=noteframe,
+  colbacktitle=notebg, coltitle=black,
+  boxrule=0.7pt, arc=2pt,
+  left=8pt, right=8pt, top=5pt, bottom=6pt,
+  before skip=7pt, after skip=7pt,
+  title={Определение}, fonttitle=\bfseries\sffamily
+}
+\newtcolorbox{tipbox}{
+  enhanced, breakable,
+  colback=tipbg, colframe=tipframe,
+  colbacktitle=tipbg, coltitle=black,
+  boxrule=0.7pt, arc=2pt,
+  left=8pt, right=8pt, top=5pt, bottom=6pt,
+  before skip=7pt, after skip=7pt,
+  title={Проверка}, fonttitle=\bfseries\sffamily
+}
+\newtcolorbox{warningbox}{
+  enhanced, breakable,
+  colback=warningbg, colframe=warningframe,
+  colbacktitle=warningbg, coltitle=black,
+  boxrule=0.7pt, arc=2pt,
+  left=8pt, right=8pt, top=5pt, bottom=6pt,
+  before skip=7pt, after skip=7pt,
+  title={Внимание}, fonttitle=\bfseries\sffamily
+}
+\newtcolorbox{cautionbox}{
+  enhanced, breakable,
+  colback=cautionbg, colframe=cautionframe,
+  colbacktitle=cautionbg, coltitle=black,
+  boxrule=0.7pt, arc=2pt,
+  left=8pt, right=8pt, top=5pt, bottom=6pt,
+  before skip=7pt, after skip=7pt,
+  title={Опасность повреждения}, fonttitle=\bfseries\sffamily
+}
 \newcommand{\attentionicon}{{\color{attentionframe}\sffamily\bfseries ⚠}}
 \newtcolorbox{attentionbox}{
   enhanced,

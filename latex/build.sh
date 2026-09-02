@@ -1,33 +1,75 @@
 #!/bin/bash
-# Сборка методического пособия PDF из лабораторных работ
-# Требования: pandoc, xelatex
+# Сборка отдельных лабораторных и полной методички через Pandoc/XeLaTeX.
 
 set -euo pipefail
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-OUTPUT="${REPO_ROOT}/labs_pdf/metodichka.pdf"
-TMP_MD="/tmp/rv_course_all_labs.md"
-BUILD_TEMP="${REPO_ROOT}/_build_temp.md"
+OUTPUT_DIR="${REPO_ROOT}/labs_pdf"
+TARGET="${1:-manual}"
+TEMP_FILES=()
+
+if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
+    SOURCE_DATE_EPOCH="$(git -C "$REPO_ROOT" log -1 --format=%ct 2>/dev/null || true)"
+    SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
+    export SOURCE_DATE_EPOCH
+fi
+export FORCE_SOURCE_DATE=1
+export TZ=UTC
 
 cleanup() {
-    rm -f "$BUILD_TEMP" "$TMP_MD"
+    if [ "${#TEMP_FILES[@]}" -gt 0 ]; then
+        rm -f "${TEMP_FILES[@]}"
+    fi
 }
 trap cleanup EXIT
 
-echo "=== Сборка методического пособия ==="
-
-# Проверка зависимостей
 for cmd in pandoc xelatex; do
     if ! command -v "$cmd" &>/dev/null; then
-        echo "ОШИБКА: $cmd не найден. Установите: apt-get install pandoc texlive-xetex texlive-latex-extra" >&2
+        echo "ОШИБКА: $cmd не найден. Установите pandoc, texlive-xetex и texlive-latex-extra." >&2
         exit 1
     fi
 done
 
-# Склеиваем лабораторные из labs/metodichka.md в один файл
-# с YAML-заголовком для pandoc. Файл labs/metodichka.md является источником порядка лабораторных.
-echo "1. Склеивание лабораторных работ..."
-cat >"$TMP_MD" <<'YAML'
+mkdir -p "$OUTPUT_DIR"
+
+PANDOC_COMMON=(
+    --from=markdown
+    --pdf-engine=xelatex
+    --include-in-header="${REPO_ROOT}/latex/header.tex"
+    --lua-filter="${REPO_ROOT}/latex/style-code.lua"
+    --resource-path="${REPO_ROOT}/labs:${REPO_ROOT}"
+    --standalone
+    --metadata=lang:ru-RU
+    --metadata=documentclass:scrreprt
+    --metadata=papersize:a4
+    --metadata=fontsize:12pt
+    "--variable=mainfont:DejaVu Serif"
+    "--variable=monofont:DejaVu Sans Mono"
+)
+
+build_lab() {
+    local number="$1"
+    local input="${REPO_ROOT}/labs/lab${number}.md"
+    local output="${OUTPUT_DIR}/lab${number}.pdf"
+
+    if [ ! -f "$input" ]; then
+        echo "ОШИБКА: не найден $input" >&2
+        exit 1
+    fi
+
+    echo "Сборка лабораторной №${number}..."
+    pandoc "$input" -o "$output" "${PANDOC_COMMON[@]}"
+    echo "Готово: $output"
+}
+
+build_manual() {
+    local manifest="${REPO_ROOT}/labs/metodichka.md"
+    local combined
+    combined="$(mktemp "${TMPDIR:-/tmp}/singleboards-course.XXXXXX")"
+    TEMP_FILES+=("$combined")
+
+    cat >"$combined" <<'YAML'
 ---
 title: "Linux на встраиваемых устройствах"
 subtitle: "Лабораторный практикум"
@@ -45,44 +87,65 @@ monofont: "DejaVu Sans Mono"
 
 YAML
 
-while IFS= read -r line; do
-    if [[ ! "$line" =~ @import[[:space:]]+\"(lab[0-9]+\.md)\" ]]; then
-        continue
-    fi
+    echo "Сборка методического пособия..."
+    while IFS= read -r line; do
+        if [[ ! "$line" =~ @import[[:space:]]+\"(lab[0-9]+\.md)\" ]]; then
+            continue
+        fi
 
-    LAB_NAME="${BASH_REMATCH[1]}"
-    LAB_FILE="${REPO_ROOT}/labs/${LAB_NAME}"
-    if [ ! -f "$LAB_FILE" ]; then
-        echo "ОШИБКА: не найден $LAB_FILE" >&2
-        exit 1
-    fi
-    echo "   + ${LAB_NAME}"
-    cat "$LAB_FILE" >>"$TMP_MD"
-    echo "" >>"$TMP_MD"
-done < "${REPO_ROOT}/labs/metodichka.md"
+        local lab_name="${BASH_REMATCH[1]}"
+        local lab_file="${REPO_ROOT}/labs/${lab_name}"
+        if [ ! -f "$lab_file" ]; then
+            echo "ОШИБКА: не найден $lab_file" >&2
+            exit 1
+        fi
+        echo "  + ${lab_name}"
+        cat "$lab_file" >>"$combined"
+        printf '\n' >>"$combined"
+    done <"$manifest"
 
-# Сборка PDF через pandoc + xelatex
-echo "2. Генерация PDF (pandoc → xelatex)..."
-mkdir -p "$(dirname "$OUTPUT")"
+    pandoc "$combined" \
+        -o "${OUTPUT_DIR}/metodichka.pdf" \
+        "${PANDOC_COMMON[@]}" \
+        --toc \
+        --number-sections \
+        --top-level-division=chapter
+    echo "Готово: ${OUTPUT_DIR}/metodichka.pdf"
+}
 
-# Обработка изображений: в .md они ссылаются как ../pictures/имя.jpg
-# При сборке из каталога labs/ путь должен быть корректным.
-# Запускаем pandoc из REPO_ROOT, а склеенный .md лежит в /tmp — пути ../pictures/ не сработают.
-# Решение: скопировать склеенный .md в REPO_ROOT, собрать оттуда, потом удалить.
-cp "$TMP_MD" "$BUILD_TEMP"
+build_answers() {
+    local input="${REPO_ROOT}/labs/control_questions.md"
+    local output="${OUTPUT_DIR}/control_questions.pdf"
 
-# Исправляем пути к картинкам: ../pictures/ → pictures/ (т.к. pandoc запускается из корня репозитория)
-sed -i 's|\.\./pictures/|pictures/|g' "$BUILD_TEMP"
+    echo "Сборка ответов на контрольные вопросы..."
+    pandoc "$input" -o "$output" "${PANDOC_COMMON[@]}" --toc
+    echo "Готово: $output"
+}
 
-cd "$REPO_ROOT"
-pandoc "_build_temp.md" \
-    -o "labs_pdf/metodichka.pdf" \
-    --pdf-engine=xelatex \
-    --include-in-header="latex/header.tex" \
-    --lua-filter="latex/style-code.lua" \
-    --toc \
-    --number-sections \
-    --standalone \
-    --metadata date="$(date '+%d.%m.%Y')"
-
-echo "=== Готово: ${OUTPUT} ==="
+case "$TARGET" in
+    manual)
+        build_manual
+        ;;
+    lab[1-9]|lab1[0-3])
+        build_lab "${TARGET#lab}"
+        ;;
+    labs)
+        for number in {1..13}; do
+            build_lab "$number"
+        done
+        ;;
+    answers)
+        build_answers
+        ;;
+    all)
+        for number in {1..13}; do
+            build_lab "$number"
+        done
+        build_manual
+        build_answers
+        ;;
+    *)
+        echo "Использование: $0 [manual|lab1..lab13|labs|answers|all]" >&2
+        exit 2
+        ;;
+esac
