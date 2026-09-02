@@ -9,23 +9,24 @@
 - [Резюме лабораторных работ](labs/summary.md)
 - [Методичка PDF](labs_pdf/metodichka.pdf)
 - [Контрольные вопросы](labs/control_questions.md)
+- [Ответы на контрольные вопросы PDF](labs_pdf/control_questions.pdf)
 - [Telegram-посты для анонса курса](tg-posts/)
 
 ## Лабораторные работы
 
-- [Лабораторная №1. Базовые навыки работы с одноплатным компьютером](labs/lab1.md)
-- [Лабораторная №2. Работа с платой по SSH](labs/lab2.md)
-- [Лабораторная №3. Использование кросс-компилятора](labs/lab3.md)
-- [Лабораторная №4. Создание основных компонентов образа. Ядро Linux](labs/lab4.md)
-- [Лабораторная №5. Дерево устройств, корневая ФС, загрузчик](labs/lab5.md)
-- [Лабораторная №6. Подготовка носителя и запись образа](labs/lab6.md)
-- [Лабораторная №7. Добавление поддержки SPI-интерфейса](labs/lab7.md)
-- [Лабораторная №8. Добавление поддержки I2C-интерфейса](labs/lab8.md)
-- [Лабораторная №9. Работа с логическими анализаторами](labs/lab9.md)
-- [Лабораторная №10. Основы программирования микроконтроллеров Arduino](labs/lab10.md)
-- [Лабораторная №11. Интеграция Arduino и Lichee RV Dock по SPI с датчиком BME280](labs/lab11.md)
-- [Лабораторная №12. Протокол MQTT](labs/lab12.md)
-- [Лабораторная №13. Итоговое проектное задание по вариантам](labs/lab13.md)
+- Лабораторная №1. Базовые навыки работы с одноплатным компьютером: [Markdown](labs/lab1.md) · [PDF](labs_pdf/lab1.pdf)
+- Лабораторная №2. Работа с платой по SSH: [Markdown](labs/lab2.md) · [PDF](labs_pdf/lab2.pdf)
+- Лабораторная №3. Использование кросс-компилятора: [Markdown](labs/lab3.md) · [PDF](labs_pdf/lab3.pdf)
+- Лабораторная №4. Создание основных компонентов образа: ядро Linux: [Markdown](labs/lab4.md) · [PDF](labs_pdf/lab4.pdf)
+- Лабораторная №5. Дерево устройств, корневая файловая система и загрузчик: [Markdown](labs/lab5.md) · [PDF](labs_pdf/lab5.pdf)
+- Лабораторная №6. Подготовка носителя и запись образа: [Markdown](labs/lab6.md) · [PDF](labs_pdf/lab6.pdf)
+- Лабораторная №7. Добавление поддержки интерфейса SPI: [Markdown](labs/lab7.md) · [PDF](labs_pdf/lab7.pdf)
+- Лабораторная №8. Добавление поддержки интерфейса I2C: [Markdown](labs/lab8.md) · [PDF](labs_pdf/lab8.pdf)
+- Лабораторная №9. Работа с логическим анализатором: [Markdown](labs/lab9.md) · [PDF](labs_pdf/lab9.pdf)
+- Лабораторная №10. Основы программирования микроконтроллеров Arduino: [Markdown](labs/lab10.md) · [PDF](labs_pdf/lab10.pdf)
+- Лабораторная №11. Интеграция Arduino и Lichee RV Dock по SPI с датчиком BME280: [Markdown](labs/lab11.md) · [PDF](labs_pdf/lab11.pdf)
+- Лабораторная №12. Протокол MQTT: [Markdown](labs/lab12.md) · [PDF](labs_pdf/lab12.pdf)
+- Лабораторная №13. Итоговое проектное задание по вариантам: [Markdown](labs/lab13.md) · [PDF](labs_pdf/lab13.pdf)
 
 ## Оборудование
 
@@ -54,7 +55,7 @@ $ ./latex/build.sh
 
 Если сборка прошла успешно, в конце появится сообщение:
 
-```bash
+```console
 Готово: /path/to/repo/labs_pdf/metodichka.pdf
 ```
 
