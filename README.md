@@ -75,3 +75,4 @@ $ ./latex/build.sh
 - [Материалы employer day](Additional/employer_day.md)
 - [Идея MQTT-проекта](Additional/mqtt_idea.md)
 - [Идеи по развитию заданий и итоговых проектов](course_ideas/README.md)
+- [Реестр дополнительных заданий и статусов проверки](course_ideas/additional_tasks.md)
