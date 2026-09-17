@@ -8,9 +8,12 @@
 
 - рабочий компьютер с ALT Linux и доступом в интернет;
 - установленный кросс-тулчейн RISC-V;
-- утилиты `git`, `make` и зависимости для сборки U-Boot и OpenSBI;
+- утилиты `git`, `make`, `patch`, `swig`, `dtc`, `file`, `xz`, `cpio`, `rsync`, `bison`, `flex` и зависимости для сборки U-Boot и OpenSBI;
 - ядро, `.config` и DTB, полученные в лабораторной №4;
 - не менее 10 Гбайт свободного места для исходного кода и загруженных компонентов.
+
+> [!CAUTION]
+> В этой работе не записывайте данные на microSD, не запускайте `mkfs` и не изменяйте таблицу разделов. Не заменяйте `/etc/apt/sources.list` ради получения одного пакета. Подготовка носителя выполняется в лабораторной №6.
 
 ## Ключевые понятия
 
@@ -88,20 +91,24 @@ BootROM не читает `extlinux.conf` и не ищет ядро в файл�
 > [!NOTE]
 > **extlinux.conf** — текстовый файл конфигурации, который сообщает U-Boot пути к ядру и DTB, а также параметры командной строки ядра.
 
-Простейшая конфигурация для подготовленных компонентов выглядит так:
+Простейшая конфигурация для подготовленных компонентов выглядит так. Метка `ROOTFS` соответствует разметке из лабораторной №6 и не зависит от номера устройства, присвоенного ядром:
 
 ```conf
-label Linux
+default linux-lab5
+timeout 50
+
+label linux-lab5
+  menu label ALT Linux (метка-автора)
   kernel /Image
   fdt /sun20i-d1-lichee-rv-dock.dtb
-  append root=/dev/mmcblk0p2 rootwait console=ttyS0,115200
+  append root=LABEL=ROOTFS rootwait console=ttyS0,115200
 ```
 
 Параметры имеют следующее назначение:
 
 - `kernel /Image` задаёт путь к ядру на загрузочном разделе;
 - `fdt /sun20i-d1-lichee-rv-dock.dtb` задаёт путь к DTB;
-- `root=/dev/mmcblk0p2` указывает раздел с корневой файловой системой;
+- `root=LABEL=ROOTFS` указывает раздел с корневой файловой системой по устойчивой метке;
 - `rootwait` предписывает ядру дождаться появления корневого устройства;
 - `console=ttyS0,115200` включает вывод консоли ядра через UART со скоростью 115200 бод.
 
@@ -110,25 +117,58 @@ label Linux
 
 ## Порядок выполнения
 
+### Подготовка рабочего каталога и инструментов
+
+Создайте отдельный каталог работы и проверьте инструменты. Не выполняйте сборку в единственном сохранённом каталоге из лабораторной №4:
+
+```bash
+mkdir -p ~/lab5-work
+cd ~/lab5-work
+command -v git make patch gcc bison flex swig dtc file sha256sum xz \
+    riscv64-linux-gnu-gcc python3 rpm2cpio cpio rsync
+python3 -c 'import setuptools, pkg_resources'
+swig -version
+riscv64-linux-gnu-gcc --version
+```
+
+Если зависимости отсутствуют, установите их из уже настроенных репозиториев либо используйте подготовленное преподавателем окружение:
+
+```bash
+apt-get install git make patch gcc bison flex gcc-riscv64-linux-gnu swig dtc xz \
+    python3-module-setuptools python3-module-pkg-resources cpio rsync \
+    libssl-devel
+```
+
+> [!WARNING]
+> Если `command -v python3` указывает на пользовательскую установку, она может скрывать системные модули. Сначала добейтесь успешного выполнения проверки импорта. Не смешивайте пакеты разных версий Python в одной сборке.
+
 ### Получение DTB
 
-Возьмите DTB Lichee RV Dock из результатов лабораторной №4 и убедитесь, что имя платы определено верно:
+Возьмите DTB Lichee RV Dock из результатов лабораторной №4 и убедитесь, что его формат и поле `model` определены верно:
 
 ```bash
 file arch/riscv/boot/dts/allwinner/sun20i-d1-lichee-rv-dock.dtb
+dtc -I dtb -O dts \
+    arch/riscv/boot/dts/allwinner/sun20i-d1-lichee-rv-dock.dtb \
+    > lichee-rv-dock.dts
+grep -F 'model = "Sipeed Lichee RV Dock";' lichee-rv-dock.dts
 ```
 
 > [!TIP]
-> **Ожидаемый результат.** Утилита `file` должна определить файл как Flattened Device Tree blob, а не как пустой файл или обычный текст.
+> **Ожидаемый результат.** Утилита `file` должна определить файл как Device Tree Blob, а не как пустой файл или обычный текст.
 
 ### Сборка OpenSBI
 
-На [сайте сообщества linux-sunxi](https://linux-sunxi.org/Sipeed_Lichee_RV) приведён вариант сборки компонентов для Lichee RV. Получите исходный код OpenSBI и соберите динамическую прошивку:
+На [сайте сообщества linux-sunxi](https://linux-sunxi.org/Sipeed_Lichee_RV) приведён вариант сборки компонентов для Lichee RV. Получите исходный код OpenSBI, перейдите на проверенную ревизию и соберите динамическую прошивку:
 
 ```bash
 git clone https://github.com/riscv-software-src/opensbi
 cd opensbi
-make CROSS_COMPILE=riscv64-linux-gnu- PLATFORM=generic FW_PIC=y
+git checkout 3593a5facc4c6938b90429a6973ba9ee21fc5899
+git rev-parse HEAD
+/usr/bin/time -v -o ../opensbi-build.time \
+    make CROSS_COMPILE=riscv64-linux-gnu- PLATFORM=generic FW_PIC=y \
+    > ../opensbi-build.log 2>&1
 cd ..
 ```
 
@@ -138,62 +178,98 @@ cd ..
 opensbi/build/platform/generic/firmware/fw_dynamic.bin
 ```
 
+Проверьте результат:
+
+```bash
+file opensbi/build/platform/generic/firmware/fw_dynamic.elf
+stat -c '%n %s bytes' opensbi/build/platform/generic/firmware/fw_dynamic.bin
+sha256sum opensbi/build/platform/generic/firmware/fw_dynamic.bin
+```
+
 ### Сборка U-Boot
 
-Получите ветку U-Boot для Allwinner D1, создайте конфигурацию Lichee RV Dock и запустите сборку, указав путь к OpenSBI:
+Получите ветку U-Boot для Allwinner D1 и перейдите на проверенную ревизию:
 
 ```bash
 git clone https://github.com/smaeul/u-boot -b d1-wip
 cd u-boot
+git checkout 2e89b706f5c956a70c989cd31665f1429e9a0b48
+git rev-parse HEAD
 make CROSS_COMPILE=riscv64-linux-gnu- lichee_rv_dock_defconfig
-make CROSS_COMPILE=riscv64-linux-gnu- OPENSBI=../opensbi/build/platform/generic/firmware/fw_dynamic.bin
+```
+
+Затем запустите сборку с OpenSBI:
+
+```bash
+export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+JOBS=4
+/usr/bin/time -v -o ../u-boot-build.time \
+    make CROSS_COMPILE=riscv64-linux-gnu- \
+    OPENSBI=../opensbi/build/platform/generic/firmware/fw_dynamic.bin \
+    -j"$JOBS" > ../u-boot-build.log 2>&1
+file u-boot-sunxi-with-spl.bin u-boot u-boot.dtb
+stat -c '%n %s bytes' u-boot-sunxi-with-spl.bin
+sha256sum u-boot-sunxi-with-spl.bin
 cd ..
 ```
 
 После успешной сборки в каталоге `u-boot` появится комбинированный образ `u-boot-sunxi-with-spl.bin`.
 
 > [!TIP]
-> **Проверка сборки.** Убедитесь, что `u-boot-sunxi-with-spl.bin` существует и имеет ненулевой размер. Сохраните журнал сборки для отчёта.
+> **Проверка сборки.** `file` должен определить комбинированный образ как `Allwinner eGON.BT0 Boot Image (RISC-V)`, а файл `u-boot` — как RISC-V ELF64. Одного ненулевого размера недостаточно.
 
 ### Получение готового U-Boot из репозитория
 
-Вместо самостоятельной сборки можно использовать готовый U-Boot с OpenSBI из [репозитория ALT Linux](https://packages.altlinux.org/ru/sisyphus_riscv64/binary/u-boot-sunxi-riscv/noarch/3229656311355752582). Для сравнения со самостоятельно собранным вариантом получите пакет `u-boot-sunxi-riscv`.
-
-Если репозиторий `sisyphus_riscv64` не настроен, добавьте следующие строки в `/etc/apt/sources.list`:
-
-> [!CAUTION]
-> Полная замена `/etc/apt/sources.list` уничтожит текущий список источников пакетов. Сначала сохраните резервную копию файла и после получения пакета восстановите исходную конфигурацию.
-
-```conf
-rpm [sisyphus-riscv64] http://ftp.altlinux.org/pub/distributions/ALTLinux/ports/riscv64 Sisyphus/riscv64 classic
-rpm [sisyphus-riscv64] http://ftp.altlinux.org/pub/distributions/ALTLinux/ports/riscv64 Sisyphus/noarch classic
-```
-
-Обновите индекс и установите пакет:
+Вместо изменения системных репозиториев получите подготовленный преподавателем RPM либо проверенный пакет непосредственно из публичного rsync-архива. Следующий вариант был проверен для пакета `2024.01-alt8.git8c36243b6c`:
 
 ```bash
-apt-get update
-apt-get install u-boot-sunxi-riscv
+rsync -avL \
+    rsync://rsync.altlinux.org/ALTLinux/ports/riscv64/Sisyphus/noarch/RPMS.classic/u-boot-sunxi-riscv-2024.01-alt8.git8c36243b6c.noarch.rpm \
+    ./
+mkdir -p u-boot-package
+cd u-boot-package
+rpm2cpio ../u-boot-sunxi-riscv-2024.01-alt8.git8c36243b6c.noarch.rpm \
+    | cpio -idm
+cd ..
 ```
-
-Файлы загрузчиков для устройств на базе Allwinner D1 будут установлены в `/usr/share/u-boot`. Найдите вариант для Lichee RV Dock и сравните его размер и контрольную сумму с самостоятельно собранным образом:
-
-```bash
-sha256sum u-boot/u-boot-sunxi-with-spl.bin
-```
-
-Совпадение контрольных сумм не требуется: версии исходного кода и параметры сборки могут различаться.
 
 ### Подготовка `extlinux.conf`
 
-Создайте конфигурацию на основе приведённого примера. Укажите согласованную с преподавателем метку, по которой можно определить автора будущего образа, и проверьте пути к ядру, DTB и rootfs.
+Создайте макет загрузочного раздела и конфигурацию на основе приведённого примера. Укажите согласованную с преподавателем метку, по которой можно определить автора будущего образа:
+
+```bash
+mkdir -p prepared/BOOT/extlinux
+cp /путь/до/Image prepared/BOOT/Image
+cp /путь/до/sun20i-d1-lichee-rv-dock.dtb prepared/BOOT/
+```
+
+Сохраните следующий шаблон как `prepared/BOOT/extlinux/extlinux.conf`. Замените текст `ФИО-группа` согласованной меткой автора. При необходимости шаблон можно дополнить другими параметрами ядра или загрузочными записями:
+
+```conf
+default linux-lab5
+timeout 50
+
+label linux-lab5
+  menu label ALT Linux (ФИО-группа)
+  kernel /Image
+  fdt /sun20i-d1-lichee-rv-dock.dtb
+  append root=LABEL=ROOTFS rootwait console=ttyS0,115200
+```
+
+Просмотрите готовый файл и убедитесь, что указанные в нём ядро и DTB существуют в макете `BOOT`:
+
+```bash
+cat prepared/BOOT/extlinux/extlinux.conf
+ls -l prepared/BOOT/Image \
+    prepared/BOOT/sun20i-d1-lichee-rv-dock.dtb
+```
 
 > [!TIP]
 > **Проверка конфигурации.** В файле должны присутствовать директивы `label`, `kernel`, `fdt` и `append`; значения путей должны совпадать с именами подготовленных файлов и будущей разметкой носителя.
 
 ### Получение rootfs
 
-Скачайте указанный преподавателем архив rootfs или предложенную регулярную сборку ALT Linux для riscv64. Не распаковывайте архив без необходимости на этом этапе, но проверьте его тип, размер и контрольную сумму.
+Скачайте указанный преподавателем архив rootfs или предложенную регулярную сборку ALT Linux для riscv64.
 
 > [!WARNING]
 > Сохраните ядро, DTB, загрузчик, `extlinux.conf` и архив rootfs. Все эти компоненты потребуются при создании образа в следующей лабораторной работе.
@@ -207,7 +283,34 @@ sha256sum u-boot/u-boot-sunxi-with-spl.bin
 5. Скачайте с указанного преподавателем ресурса архив rootfs.
 6. Подготовьте `extlinux.conf`, указав согласованную метку автора будущего образа.
 7. Сохраните ядро, DTB, оба варианта загрузчика, `extlinux.conf` и архив rootfs.
-8. Продемонстрируйте преподавателю подготовленные компоненты.
+8. Создайте манифест с источником, версией или commit, размером и SHA-256 каждого компонента.
+9. Выполните предполётную проверку макета `BOOT` и продемонстрируйте преподавателю подготовленные компоненты.
+
+## Дополнительные задания
+
+### Вариант 1. Паспорт комплекта загрузки
+
+Для `Image`, DTB, `extlinux.conf`, OpenSBI, самостоятельно собранного и пакетного U-Boot и rootfs составьте таблицу «назначение — источник — версия или commit — размер — SHA-256 — формат». Создайте `SHA256SUMS`, проверьте его через `sha256sum -c`, затем в отдельной копии измените один текстовый файл и подтвердите обнаружение несовпадения. Исходный комплект после опыта должен снова проходить проверку.
+
+### Вариант 2. Аудит DTB платы
+
+Декомпилируйте DTB и найдите `model`, `compatible`, CPU, выбранный UART, контроллеры SD/MMC и хотя бы один узел со статусом `disabled`. Объясните отсутствие статического узла памяти, если размер DRAM добавляется загрузчиком. Для намеренной ошибки проверьте DTB близкой платы, например MangoPi MQ Pro: проверка точного значения `model = "Sipeed Lichee RV Dock"` должна завершиться ненулевым кодом.
+
+### Вариант 3. Дополнение шаблона `extlinux.conf`
+
+Создайте вторую загрузочную запись на основе готового шаблона: задайте другую строку `label` и `menu label`, но используйте те же проверенные `Image`, DTB и `root=LABEL=ROOTFS`. Объясните назначение `default` и `timeout`, а также как назначить одну из записей загрузочной записью по умолчанию. После проверки удалите дополнительную запись или сохраните исходный шаблон отдельно.
+
+### Вариант 4. Самостоятельный и пакетный U-Boot
+
+Сравните формат, полный размер, SHA-256 и строку версии двух образов. Объясните, почему одинаковый заголовок eGON и размер SPL 73728 байт не требуют совпадения полных образов. Типовая ошибка — объявить один файл повреждённым только из-за разных хешей; исправление — сначала сопоставить версии, commit, параметры и источник OpenSBI.
+
+### Вариант 5. Аудит архива rootfs
+
+Без распаковки проверьте rootfs командами `xz -t`, `tar -tJf` и `tar -tvJf`, найдите `os-release`, `init`, системный менеджер и специальные файлы `/dev`. Создайте усечённую копию небольшого размера командой `head -c 16M "$ROOTFS" > rootfs.truncated.tar.xz`, подтвердите ошибку `Unexpected end of input`, затем удалите только усечённую копию. Объясните, почему `file` сам по себе не доказывает целостность архива.
+
+### Вариант 6. Воспроизводимая сборка U-Boot
+
+Выполните две чистые сборки одной ревизии U-Boot с одинаковыми OpenSBI, тулчейном, `defconfig`, числом заданий и `SOURCE_DATE_EPOCH`, взятым из commit. После каждой сборки сохраните SHA-256 `u-boot-sunxi-with-spl.bin` и сравните файлы через `cmp -s`. Затем объясните, почему без фиксированной эпохи в строку версии попадает текущее время и хеш может измениться. Все сравнения выполняйте на копии исходников; сохранённый результат обязательной части не удаляйте.
 
 ## Контрольные вопросы
 
@@ -216,6 +319,9 @@ sha256sum u-boot/u-boot-sunxi-with-spl.bin
 3. Для чего нужны SPL и U-Boot proper в цепочке загрузки?
 4. Какую роль выполняет OpenSBI при загрузке RISC-V?
 5. Какая информация содержится в файле `extlinux.conf`?
+6. Почему путь `root=LABEL=ROOTFS` устойчивее имени вида `/dev/mmcblk0p2`?
+7. Почему `file` и ненулевой размер не заменяют SHA-256 и проверку содержимого?
+8. Для чего при воспроизводимой сборке используется `SOURCE_DATE_EPOCH`?
 
 ## Требования к отчёту
 
@@ -228,7 +334,11 @@ sha256sum u-boot/u-boot-sunxi-with-spl.bin
 - сведения о пакетном U-Boot и сравнение двух вариантов;
 - содержимое подготовленного `extlinux.conf`;
 - имя, размер и контрольную сумму архива rootfs;
+- версии или commit исходников и версии основных инструментов;
+- результат проверки `model` и `compatible` в DTB;
+- манифест компонентов и результат `sha256sum -c`;
 - перечень сохранённых компонентов;
+- результаты выбранного дополнительного задания, если оно выполнялось;
 - ответы на контрольные вопросы;
 - краткий вывод.
 
