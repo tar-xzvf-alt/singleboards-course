@@ -94,12 +94,15 @@
 
 **Основные темы:**
 - Разбивка SD-карты: BOOT (FAT32) + ROOTFS (ext4)
-- Запись загрузчика: `dd if=u-boot-sunxi-with-spl.bin of=/dev/sdX bs=1k seek=8`
+- Безопасная идентификация карты, резервная копия начала носителя
+- Расчёт непересечения и запись U-Boot со смещением 8 КиБ
 - mkfs.vfat, mkfs.ext4
 - Структура BOOT: Image, .dtb, extlinux/
-- Распаковка rootfs: `tar -xJpf rootfs.tar.xz`
+- Распаковка rootfs с сохранением числовых владельцев и прав
+- Обратная проверка U-Boot, SHA-256 файлов и fsck разделов
+- Диагностика Extlinux, watchdog, DTB, ROOTFS и несовместимых модулей по UART
 
-**Результат:** Рабочая SD-карта с ALT Linux
+**Результат:** Проверенная загрузочная SD-карта с Linux 6.16 PREEMPT_RT и ALT Linux
 
 ---
 
