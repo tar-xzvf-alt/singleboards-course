@@ -185,13 +185,26 @@ CONFIG_DMA_SUN6I=y
 > [!WARNING]
 > Рабочая конфигурация требует согласованных изменений Device Tree и ядра. Без `SPI_SUN6I` контроллер не работает, без `SPI_SPIDEV` не появляется символьное устройство в каталоге /dev, а без `DMA_SUN6I` длинные передачи переходят на программный путь вместо DMA.
 
-Добавьте новый DTB в `arch/riscv/boot/dts/allwinner/Makefile`, соберите ядро и DTB и проверьте, что получены оба файла:
+Добавьте новый DTB в `arch/riscv/boot/dts/allwinner/Makefile`:
+
+```makefile
+dtb-$(CONFIG_ARCH_SUNXI) += sun20i-d1-lichee-rv-dock-spi-lab.dtb
+```
+
+Скопируйте проверенную конфигурацию лабораторной №4 в новый каталог сборки, примените зависимости Kconfig, соберите ядро и DTB и проверьте, что получены оба файла:
 
 ```bash
-make O="$HOME/kernel-out-spi" ARCH=riscv \
+KERNEL_SRC="$HOME/kernel-source-6.16"
+BUILD_DIR="$HOME/kernel-out-spi"
+
+mkdir -p "$BUILD_DIR"
+cp "$HOME/kernel-out-6.16/.config" "$BUILD_DIR/.config"
+make -C "$KERNEL_SRC" O="$BUILD_DIR" ARCH=riscv \
+  CROSS_COMPILE=riscv64-linux-gnu- olddefconfig
+make -C "$KERNEL_SRC" O="$BUILD_DIR" ARCH=riscv \
   CROSS_COMPILE=riscv64-linux-gnu- -j"$(nproc)" Image dtbs
-ls -lh "$HOME/kernel-out-spi/arch/riscv/boot/Image"
-ls -lh "$HOME/kernel-out-spi/arch/riscv/boot/dts/allwinner/"*spi-lab.dtb
+ls -lh "$BUILD_DIR/arch/riscv/boot/Image"
+ls -lh "$BUILD_DIR/arch/riscv/boot/dts/allwinner/"*spi-lab.dtb
 ```
 
 Скопируйте комплект на раздел BOOT под отдельными именами. В `extlinux/extlinux.conf` оставьте также запись с ранее проверенными `Image` и DTB. Корневой раздел лучше задавать через фактический `PARTUUID`, поскольку после активации дополнительных устройств порядок `/dev/mmcblkN` может измениться:
@@ -215,7 +228,7 @@ label known-good
 Соберите тестовую утилиту на рабочем компьютере и скопируйте её в ROOTFS:
 
 ```bash
-riscv64-linux-gnu-gcc -O2 -Wall -Wextra -static \
+riscv64-linux-gnu-gcc -O2 -Wall -static \
   -o spidev_test tools/spi/spidev_test.c
 file spidev_test
 ```
@@ -229,8 +242,9 @@ uname -r
 ls -l /dev/spidev*
 dmesg | grep -i spi
 readlink -f /sys/bus/spi/devices/spi1.0/driver
-readlink -f /sys/class/spi_master/spi1/device/dma_rx
-readlink -f /sys/class/spi_master/spi1/device/dma_tx
+readlink -f /sys/class/spi_master/spi1/device/driver
+mountpoint -q /sys/kernel/debug || mount -t debugfs debugfs /sys/kernel/debug
+grep -E '4026000\.spi:(tx|rx)' /sys/kernel/debug/dmaengine/summary
 ```
 
 > [!TIP]
@@ -272,34 +286,66 @@ done
 echo "repeat_count=100 repeat_failures=$fail"
 ```
 
+Прямая перемычка также позволяет проверить настройку CPOL/CPHA и порядка битов. Выполните передачи во всех четырёх режимах и с LSB-first:
+
+```bash
+"$T" -D "$D" -s 100000 -b 8 \
+  -i tx-1024.bin -o rx-mode0.bin
+"$T" -D "$D" -s 100000 -b 8 -H \
+  -i tx-1024.bin -o rx-mode1.bin
+"$T" -D "$D" -s 100000 -b 8 -O \
+  -i tx-1024.bin -o rx-mode2.bin
+"$T" -D "$D" -s 100000 -b 8 -H -O \
+  -i tx-1024.bin -o rx-mode3.bin
+"$T" -D "$D" -s 100000 -b 8 -L \
+  -i tx-1024.bin -o rx-lsb.bin
+
+for result in rx-mode0.bin rx-mode1.bin rx-mode2.bin \
+              rx-mode3.bin rx-lsb.bin; do
+    cmp -s tx-1024.bin "$result"
+    echo "$result cmp_rc=$?"
+done
+```
+
+Совпадение во всех режимах с прямой перемычкой проверяет применение настроек контроллером, но не означает, что реальная периферия поддерживает любой режим. CPOL, CPHA и порядок битов всегда выбирают по datasheet устройства.
+
 Для наблюдения границы PIO/DMA выполните передачи длиной 64 и 65 байт и сравните счётчики до и после теста:
 
 ```bash
 S=/sys/bus/spi/devices/spi1.0/statistics
 grep -H . "$S"/messages "$S"/errors "$S"/timedout
+grep -E '3002000.dma-controller|sun6i-spi' /proc/interrupts
 
 dd if=tx-1024.bin of=tx-64.bin bs=64 count=1 status=none
 dd if=tx-1024.bin of=tx-65.bin bs=65 count=1 status=none
-for size in 64 65; do
-    "$T" -D "$D" -s 1000000 -b 8 \
-      -i "tx-$size.bin" -o "rx-$size.bin"
-    cmp -s "tx-$size.bin" "rx-$size.bin"
-    echo "length=$size cmp_rc=$?"
-done
+
+"$T" -D "$D" -s 1000000 -b 8 -i tx-64.bin -o rx-64.bin
+cmp -s tx-64.bin rx-64.bin
+echo "length=64 cmp_rc=$?"
+grep -E '3002000.dma-controller|sun6i-spi' /proc/interrupts
+
+"$T" -D "$D" -s 1000000 -b 8 -i tx-65.bin -o rx-65.bin
+cmp -s tx-65.bin rx-65.bin
+echo "length=65 cmp_rc=$?"
+grep -E '3002000.dma-controller|sun6i-spi' /proc/interrupts
 
 grep -H . "$S"/messages "$S"/errors "$S"/timedout
 ```
 
-Статистика SPI подтверждает число и длины транзакций, но не показывает фактически выбранный путь PIO/DMA. Вывод о границе делайте совместно по исходному коду `sun6i_spi_can_dma()`, наличию `dma_rx`/`dma_tx`, успешному обмену и отсутствию ошибок.
+Передача 64 байт должна увеличить счётчик IRQ `sun6i-spi`, не меняя IRQ DMA-контроллера. Передача 65 байт должна увеличить оба счётчика. Вместе с функцией `sun6i_spi_can_dma()` в исходном коде это подтверждает фактический переход от PIO к DMA, а статистика SPI подтверждает длины и отсутствие ошибок.
 
 Проведите два отрицательных теста. Сначала при снятом питании уберите перемычку, загрузите плату и убедитесь, что команда завершается, но `cmp` возвращает 1. Затем верните перемычку также без питания и запросите аппаратный loopback:
 
 ```bash
 "$T" -D "$D" -s 100000 -l -p '\xaa'
 echo "internal_loop_rc=$?"
+"$T" -D "$D" -s 100000 -b 16 -p '\xaa'
+echo "bpw16_rc=$?"
+"$T" -D /dev/spidev99.99 -s 100000 -p '\xaa'
+echo "missing_device_rc=$?"
 ```
 
-Ключ `-l` включает флаг `SPI_LOOP` внутри контроллера и не заменяет внешнюю перемычку. Для `spi-sun6i` этот режим не поддерживается, поэтому ожидаются сообщение `unsupported mode bits` и ненулевой код завершения.
+Ключ `-l` включает флаг `SPI_LOOP` внутри контроллера и не заменяет внешнюю перемычку. Для `spi-sun6i` этот режим и 16 бит на слово не поддерживаются, поэтому ожидаются диагностические сообщения и ненулевые коды завершения. Несуществующее устройство также должно дать ненулевой код.
 
 > [!CAUTION]
 > Устанавливайте и снимайте перемычку MOSI–MISO только при выключенном питании. Не соединяйте сигнальные выводы с питанием или землёй и не подавайте на них 5 В.
@@ -328,14 +374,16 @@ echo "internal_loop_rc=$?"
 
 ## Задание
 
-1. Проанализируйте Device Tree платы Lichee RV Dock и найдите описание `SPI1` и группы `spi1_pd_pins`.
+1. Проанализируйте Device Tree платы Lichee RV Dock и найдите описание `SPI1` и группы выводов `PD10`–`PD15`.
 2. Убедитесь, что выводы `PD10`–`PD15` не заняты конфликтующим узлом.
-3. Активируйте `SPI1` и добавьте дочерний узел для доступа через SPIDEV.
+3. Создайте отдельный DTS, активируйте `SPI1` и добавьте дочерний узел для доступа через SPIDEV.
 4. Включите `CONFIG_SPI`, `CONFIG_SPI_MASTER`, `CONFIG_SPI_SUN6I`, `CONFIG_SPI_SPIDEV` и `CONFIG_DMA_SUN6I`.
-5. Соберите ядро и DTB, обновите загрузочную карту и загрузите систему.
-6. Подтвердите наличие `/dev/spidev*`.
-7. Проведите тест с перемычкой MOSI–MISO и зафиксируйте результат.
-8. Продемонстрируйте работу преподавателю.
+5. Соберите ядро, DTB и статическую утилиту `spidev_test`.
+6. Добавьте отдельную загрузочную запись по `PARTUUID`, не удаляя known-good комплект.
+7. Подтвердите наличие `/dev/spidev*`, binding драйверов и выделение DMA-каналов.
+8. Проведите тесты на 100, 500 и 1000 кГц, в режимах 0–3, с LSB-first, на границе 64/65 байт и в 100 повторах.
+9. Проведите отрицательные тесты без перемычки, с неподдерживаемыми `SPI_LOOP` и 16 битами на слово, а также с отсутствующим устройством.
+10. Продемонстрируйте работу преподавателю.
 
 ## Контрольные вопросы
 
@@ -344,7 +392,7 @@ echo "internal_loop_rc=$?"
 3. Почему узел SPI в Device Tree по умолчанию имеет `status = "disabled"`?
 4. Зачем нужен SPIDEV и какое устройство появляется в `/dev` после его активации?
 5. Какой идентификатор `compatible` используется в этой работе для привязки SPIDEV?
-6. Почему для рассматриваемой конфигурации Allwinner D1 требуется `CONFIG_DMA_SUN6I`?
+6. Когда драйвер `spi-sun6i` выбирает PIO, а когда DMA? Является ли DMA обязательной для инициализации контроллера?
 
 ## Требования к отчёту
 
@@ -355,7 +403,9 @@ echo "internal_loop_rc=$?"
 - включённые параметры конфигурации ядра;
 - вывод проверки `/dev/spidev*` и значимые сообщения `dmesg`;
 - схему или фотографию перемычки MOSI–MISO;
-- результат полнодуплексного теста;
+- таблицу частот, режимов, длин, числа повторов и ошибок полнодуплексного теста;
+- изменение IRQ контроллера SPI и DMA на передачах 64 и 65 байт;
+- результат отрицательных тестов и объяснение отличия внешней перемычки от `SPI_LOOP`;
 - ответы на контрольные вопросы;
 - краткий вывод.
 
