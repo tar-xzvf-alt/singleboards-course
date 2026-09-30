@@ -251,8 +251,8 @@ SSD1306          Lichee RV Dock
 -------          --------------
 VCC    →         3.3V
 GND    →         GND
-SCL    →         TWI2_SCL (PE12)
-SDA    →         TWI2_SDA (PE13)
+SCL    →         TWI2_SCL (PE12, контакт 38)
+SDA    →         TWI2_SDA (PG15, контакт 12)
 ```
 
 **I2C-адрес:** 0x3C (стандартный для SSD-1306).
@@ -269,7 +269,7 @@ from PIL import ImageFont
 
 serial = i2c(port=2, address=0x3C)
 oled = ssd1306(serial)
-font  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+font  = ImageFont.truetype("/usr/share/fonts/ttf/dejavu/DejaVuSans.ttf", 14)
 
 with canvas(oled) as draw:
     draw.text((0, 0),  "Hello!", fill="white", font=font)
@@ -329,8 +329,8 @@ SSD-1306 OLED     Lichee RV Dock
 -------------     --------------
 VCC ────────────→ 3.3V
 GND ────────────→ GND
-SDA ────────────→ TWI2_SDA (PE13)
-SCL ────────────→ TWI2_SCL (PE12)
+SDA ────────────→ TWI2_SDA (PG15, контакт 12)
+SCL ────────────→ TWI2_SCL (PE12, контакт 38)
 ```
 
 Все GND (Arduino, Lichee, конвертер и периферия) должны быть соединены в общий GND — без этого сигналы не будут иметь общего уровня отсчёта и SPI не заработает.
