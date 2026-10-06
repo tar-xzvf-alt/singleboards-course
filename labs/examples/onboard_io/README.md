@@ -17,6 +17,21 @@
 показывают прямой sysfs и управление через библиотеку `python-periphery`.
 Основные демонстрации этого каталога остаются более универсальными.
 
+Для учебного `lesson_examples/green_library.py` библиотека устанавливается
+из текущего Sisyphus для RISC-V пакетом **`python3-module-periphery`**:
+
+```bash
+apt-get update
+apt-get install python3-module-periphery
+unset PYTHONPATH PYTHONHOME
+python3 -c 'import periphery; print(periphery.__version__); print(periphery.__file__)'
+```
+
+На карте sda установлен `python3-module-periphery-1.1.1-alt1.noarch`.
+Пример использует явные `LED(...)` и `close()`: в этой версии
+`with LED(...) as led` не возвращает объект. Подготовка и проверка
+принадлежности модуля RPM описаны в [конспекте](lesson.md#подготовка-библиотеки).
+
 **Проверено на плате 3 октября 2026 года:** установлен полный Image
 с onboard-io DTB, загружено ядро `6.16.0-onboard-io-lab` с PREEMPT_RT.
 Обе C-демонстрации завершились с кодом 0; повторный запуск и визуальный

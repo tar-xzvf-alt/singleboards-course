@@ -42,7 +42,8 @@
 - USB-UART на хосте `/dev/ttyUSB0`, **115200 бод, 8N1**.
 - Терминал с крупным шрифтом на проекторе; хорошо видимая плата или камера.
 - Root-сессия на плате. Учётные данные сообщаются отдельно от материалов.
-- Python 3, библиотека `python-periphery==2.4.2`; `strace` для дополнительного показа.
+- Python 3, пакет `python3-module-periphery` из текущего Sisyphus для RISC-V;
+  `strace` для дополнительного показа.
 
 **Все команды ниже выполняются в Linux на плате**, кроме явно помеченных
 команд подготовки на хосте. `/dev/ttyUSB0` — имя устройства на хосте;
@@ -93,46 +94,45 @@ cd /root/onboard-io-install/lesson_examples
 
 ### Подготовка библиотеки
 
-Имя пакета — **`python-periphery`**, имя для `import` — **`periphery`**.
-Это сторонняя библиотека Python, а не модуль ядра.
-При наличии pip и поддержки venv можно подготовить отдельное окружение:
+Проект называется **`python-periphery`**, пакет ALT Linux —
+**`python3-module-periphery`**, имя для `import` — **`periphery`**.
+Это библиотека Python, установленная пакетным менеджером дистрибутива.
+На плате используйте текущие репозитории Sisyphus для архитектуры RISC-V.
+Проверьте активные источники в `/etc/apt/sources.list` и
+`/etc/apt/sources.list.d/`; на стенде подключены ветви
+`ports/riscv64/Sisyphus/riscv64` и `ports/riscv64/Sisyphus/noarch`.
+
+В root-сессии платы выполните:
 
 ```bash
-python3 -m venv /root/onboard-io-install/lesson-venv
-/root/onboard-io-install/lesson-venv/bin/python -m pip install python-periphery==2.4.2
-source /root/onboard-io-install/lesson-venv/bin/activate
+apt-get update
+apt-cache policy python3-module-periphery
+apt-get install python3-module-periphery
+unset PYTHONPATH PYTHONHOME
+python3 -c 'import periphery; print(periphery.__version__); print(periphery.__file__)'
+rpm -q python3-module-periphery
 ```
 
-На обследованной плате pip отсутствует. Для демонстрации использован
-**wheel как архив в `PYTHONPATH`**, без изменения системного Python.
-Этот способ подходит для данного пакета: он написан на чистом Python
-и не имеет внешних зависимостей.
+На момент проверки в этом репозитории доступен пакет
+`python3-module-periphery-1.1.1-alt1.noarch`. Его версия отличается
+от последнего выпуска проекта; для занятия используем именно пакет
+дистрибутива, проверенный на плате. В будущем кандидат может измениться,
+поэтому смотрите вывод `apt-cache policy` и повторяйте проверку примера.
 
-На хосте скачайте wheel с [PyPI](https://pypi.org/project/python-periphery/2.4.2/):
+На стенде `periphery.__file__` указывает на
+`/usr/lib/python3/site-packages/periphery/__init__.py`.
+Проверьте принадлежность файлов установленному RPM:
 
 ```bash
-curl -fL -o python_periphery-2.4.2-py2.py3-none-any.whl \
-  https://files.pythonhosted.org/packages/30/e6/0ff2b3910f43cc9cd0fa1b929b043e826d5d01d0959dcfca011a77b9665b/python_periphery-2.4.2-py2.py3-none-any.whl
-sha256sum python_periphery-2.4.2-py2.py3-none-any.whl
+rpm -qf /usr/lib/python3/site-packages/periphery/__init__.py \
+  /usr/lib/python3/site-packages/periphery/led.py
 ```
 
-Ожидаемая SHA-256:
-
-```text
-69d38c9b864e3213e7618929548b42c3c94363c065950926363032e0c571af2c
-```
-
-Передайте архив на плату в `/root/onboard-io-install/` и сверьте сумму.
-В терминале платы выполните:
-
-```bash
-export PYTHONPATH=/root/onboard-io-install/python_periphery-2.4.2-py2.py3-none-any.whl
-python3 -c 'import periphery; print(periphery.__version__)'
-```
-
-Переменную нужно задать заново в новой сессии. Интернет на самой плате
-для встречи не требуется: файлы и библиотека готовятся заранее.
-Если используется venv с установленной библиотекой, `PYTHONPATH` не нужен.
+Если раньше использовался wheel через `PYTHONPATH` или виртуальное
+окружение, отключите их перед проверкой системного пакета.
+`lesson-env.sh` на текущей карте sda очищает `PYTHONPATH`/`PYTHONHOME`
+и переходит в каталог примеров. Пакет устанавливается до встречи;
+после установки для демонстрации интернет не нужен.
 
 ### Исходное состояние
 
@@ -430,17 +430,18 @@ from periphery import LED
 
 Path("/sys/class/leds/green:status/trigger").write_text("none\n")
 
-with LED("green:status") as led:
-    try:
-        for _ in range(5):
-            led.write(True)
-            sleep(0.5)
-            led.write(False)
-            sleep(0.5)
-    except KeyboardInterrupt:
-        pass
-    finally:
+led = LED("green:status")
+try:
+    for _ in range(5):
+        led.write(True)
+        sleep(0.5)
         led.write(False)
+        sleep(0.5)
+except KeyboardInterrupt:
+    pass
+finally:
+    led.write(False)
+    led.close()
 ```
 
 ```bash
@@ -452,9 +453,16 @@ python3 green_library.py
 записывает их через `os.write` и возвращает позицию файлового дескриптора
 к началу. **Файловый дескриптор** — номер открытого ресурса, выданный ядром
 процессу; следующие операции используют этот номер.
-`with` обеспечивает закрытие ресурса; **закрытие не выключает LED**,
-поэтому явный `led.write(False)` в `finally` всё ещё нужен.
+`LED("green:status")` создаёт объект и открывает ресурс.
+В `finally` мы выполняем два разных действия: выключение через
+`led.write(False)` и закрытие через `led.close()`.
+**Закрытие не выключает LED**, поэтому нужны оба действия.
 Trigger отключаем отдельно: класс `LED` этой библиотеки им не управляет.
+
+В пакете версии 1.1.1 метод `LED.__enter__()` не возвращает объект:
+конструкция `with LED(...) as led` даёт `led = None`. При подготовке
+эта несовместимость была воспроизведена, поэтому учебный пример использует
+явное создание и закрытие. Такой код работает с используемой версией RPM.
 
 ```text
 Прямой путь:    программа → файловые операции → sysfs → драйвер → LED
@@ -649,7 +657,8 @@ write(3</sys/devices/platform/leds/leds/green:status/brightness>, "0\n", 2) = 2
 | Нет каталога LED | `uname -r`, модель DT, включение драйверов, журнал загрузки |
 | LED меняется сам | Выбранный `trigger`, другие запущенные LED-программы |
 | Нет `delay_on`/`delay_off` | Сначала выбрать `timer` и проверить список доступных trigger |
-| `ModuleNotFoundError: periphery` | Выбор Python/venv или наличие wheel в `PYTHONPATH` текущей сессии |
+| `ModuleNotFoundError: periphery` | Установка `python3-module-periphery`, используемый системный Python и вывод `rpm -q` |
+| Вместо RPM импортируется другой модуль | `periphery.__file__`, виртуальное окружение, `PYTHONPATH` и `PYTHONHOME` |
 | `AssertionError` в RGB | `multi_index` отличается от ожидаемого порядка; не отключать проверку ради запуска |
 | `Permission denied` | Выполнение на плате и права процесса; не менять права всех устройств |
 
@@ -661,23 +670,30 @@ write(3</sys/devices/platform/leds/leds/green:status/brightness>, "0\n", 2) = 2
 ## Проверка материалов на стенде
 
 Проверены именно учебные файлы из `lesson_examples/` на плате,
-подключённой по UART `/dev/ttyUSB0`, с ядром `6.16.0-onboard-io-lab`
-и Python 3.13.0. Суммы переданных скриптов совпали с хостом.
+подключённой по UART `/dev/ttyUSB0`, с ядром `6.16.0-onboard-io-lab`.
+Базовые демонстрации проверены с Python 3.13.0; библиотечный пример
+после перехода на RPM повторно проверен на карте sda с Python 3.13.13.
+Суммы переданных скриптов совпали с хостом.
 
 | Проверка | Фактический результат |
 |---|---|
 | `green_sysfs.py` | Пять циклов переключения, код завершения 0, итоговая яркость 0 |
-| `green_library.py` | Пять циклов через `python-periphery` 2.4.2, код 0, итоговая яркость 0 |
+| `green_library.py` | Пять циклов через RPM `python3-module-periphery-1.1.1-alt1.noarch`, код 0, итоговая яркость 0 |
 | `rgb_sysfs.py` | Четыре набора компонент, код 0, итоговая яркость 0 |
 | Остановка во время работы | Все три скрипта после SIGINT завершились с кодом 0 и выключили LED |
+| SIGINT с системной библиотекой | Обновлённый `green_library.py` на sda: код 0, яркость 0 |
 | Trigger `timer` | Задержки 500/500 мс; последовательно прочитаны состояния 1, 1, 0, 0, 1, 1 |
-| Библиотека без pip | Импорт из wheel в `PYTHONPATH`, версия 2.4.2 |
+| Происхождение библиотеки | Импорт без `PYTHONPATH` из `/usr/lib/python3/site-packages`; файлы принадлежат RPM |
+| Совместимость с версией 1.1.1 | Воспроизведён `led = None` при `with`; исправлено явным созданием и закрытием объекта |
 | `strace` | В обоих зелёных примерах видны записи `1\n`/`0\n`; библиотека использует `lseek` |
+| `strace` с RPM | Десять записей `1/0`, финальная `0`, успешное закрытие дескриптора |
 | LEDC | После полного RGB-показа счётчик прерываний вырос с 0 до 20 |
 
 После проверки оба LED выключены, trigger отключён. Временные серверы
-передачи файлов на хосте остановлены. Скрипты и wheel оставлены в
-`/root/onboard-io-install/`, чтобы повторить встречу без скачивания.
+передачи файлов на хосте остановлены. На текущей карте sda библиотека
+установлена через APT из Sisyphus; скрипты находятся в
+`/root/onboard-io-install/lesson_examples/`. Для повторного запуска
+установленного пакета скачивание не требуется.
 Наблюдение sysfs и прерываний подтверждает выполнение операций;
 видимость цветов для всей аудитории преподаватель проверяет до встречи.
 
